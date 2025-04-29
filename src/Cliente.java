@@ -17,42 +17,47 @@ public class Cliente {
 
     public static void main(String[] args) throws Exception {
         System.out.println("Cliente iniciando conexión...");
-
-        cargarLlaveServidor();
-
         Socket socket = new Socket(IP_SERVIDOR, PUERTO_SERVIDOR);
         DataInputStream in = new DataInputStream(socket.getInputStream());
         DataOutputStream out = new DataOutputStream(socket.getOutputStream());
 
+        // Paso 0.a
         System.out.println("0.a) Cargando llave pública del servidor...");
+        cargarLlaveServidor();
 
+        // Paso 1
         System.out.println("1) Comenzando negociación Diffie-Hellman...");
-
         KeyPair clientDH = DHhelper.generarLlaveDH();
         BigInteger p = DHhelper.getP(clientDH);
         BigInteger g = DHhelper.getG(clientDH);
 
+        // Calculo P
         byte[] pBytes = p.toByteArray();
         out.writeInt(pBytes.length);
         out.write(pBytes);
 
+        // Calculo G
         byte[] gBytes = g.toByteArray();
         out.writeInt(gBytes.length);
         out.write(gBytes);
 
+        // Paso 2
         System.out.println("2) Recibiendo llave pública del servidor...");
         int serverPubLen = in.readInt();
         byte[] serverPubKeyEncoded = new byte[serverPubLen];
         in.readFully(serverPubKeyEncoded);
 
+        //Generar llaves
         KeyFactory keyFactory = KeyFactory.getInstance("DH");
         PublicKey serverPubKey = keyFactory.generatePublic(new X509EncodedKeySpec(serverPubKeyEncoded));
 
+        // Paso 3
         System.out.println("3) Enviando llave pública del cliente...");
         byte[] myPubKeyEncoded = clientDH.getPublic().getEncoded();
         out.writeInt(myPubKeyEncoded.length);
         out.write(myPubKeyEncoded);
 
+        // Paso 4
         System.out.println("4) Calculando llave secreta de sesión...");
         byte[] sharedSecret = DHhelper.generarSecretoCompartido(clientDH.getPrivate(), serverPubKey);
 
@@ -62,8 +67,8 @@ public class Cliente {
         SecretKey aesKey = new SecretKeySpec(Arrays.copyOfRange(digest, 0, 32), "AES");
         SecretKey hmacKey = new SecretKeySpec(Arrays.copyOfRange(digest, 32, 64), "HmacSHA256");
 
+        // Paso 5
         System.out.println("5) Recibiendo tabla de servicios cifrada...");
-
         int ivLen = in.readInt();
         byte[] ivBytes = new byte[ivLen];
         in.readFully(ivBytes);
@@ -82,21 +87,19 @@ public class Cliente {
         in.readFully(hmac);
 
         byte[] recalculatedHmac = CriptUtilities.calcularHMAC(tablaCifrada, hmacKey);
-
         if (!Arrays.equals(hmac, recalculatedHmac)) {
             System.out.println("[ERROR] HMAC inválido en tabla recibida.");
             socket.close();
             return;
         }
-
         byte[] tablaBytes = CriptUtilities.decryptAES(tablaCifrada, aesKey, iv);
-
         if (!CriptUtilities.verificarFirma(tablaBytes, firma, serverPublicKey)) {
             System.out.println("[ERROR] Firma inválida en tabla recibida.");
             socket.close();
             return;
         }
 
+        // Paso 5.b
         System.out.println("5.b) Tabla recibida y verificada correctamente.");
 
         ObjectInputStream ois = new ObjectInputStream(new ByteArrayInputStream(tablaBytes));
@@ -119,14 +122,15 @@ public class Cliente {
             }
         } while (servicioElegido == -1);
 
+        // Paso 6
         System.out.println("6) Enviando selección de servicio: " + servicioElegido);
 
-        ByteArrayOutputStream bos = new ByteArrayOutputStream();
-        ObjectOutputStream oos = new ObjectOutputStream(bos);
-        oos.writeObject(servicioElegido);
-        oos.flush();
-        byte[] seleccionBytes = bos.toByteArray();
+        ByteArrayOutputStream byteOutput = new ByteArrayOutputStream();
+        ObjectOutputStream objectOutput = new ObjectOutputStream(byteOutput);
+        objectOutput.writeObject(servicioElegido);
+        objectOutput.flush();
 
+        byte[] seleccionBytes = byteOutput.toByteArray();
         byte[] seleccionCifrada = CriptUtilities.encryptAES(seleccionBytes, aesKey, iv);
         byte[] seleccionHmac = CriptUtilities.calcularHMAC(seleccionCifrada, hmacKey);
 
@@ -136,6 +140,7 @@ public class Cliente {
         out.writeInt(seleccionCifrada.length);
         out.write(seleccionCifrada);
 
+        // Paso 7
         System.out.println("7) Esperando respuesta del servidor...");
 
         int hmacRespuestaLen = in.readInt();
@@ -147,13 +152,11 @@ public class Cliente {
         in.readFully(respuestaCifrada);
 
         byte[] recalculatedHmacRespuesta = CriptUtilities.calcularHMAC(respuestaCifrada, hmacKey);
-
         if (!Arrays.equals(hmacRespuesta, recalculatedHmacRespuesta)) {
             System.out.println("[ERROR] HMAC inválido en respuesta.");
             socket.close();
             return;
         }
-
         byte[] respuestaBytes = CriptUtilities.decryptAES(respuestaCifrada, aesKey, iv);
 
         ObjectInputStream respuestaOis = new ObjectInputStream(new ByteArrayInputStream(respuestaBytes));
@@ -163,6 +166,7 @@ public class Cliente {
         System.out.println("IP: " + datosServicio[1]);
         System.out.println("Puerto: " + datosServicio[2]);
 
+        // Paso 8
         System.out.println("8) Comunicación finalizada correctamente.");
 
         socket.close();

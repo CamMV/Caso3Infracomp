@@ -10,6 +10,7 @@ import javax.crypto.spec.SecretKeySpec;
 
 public class ServidorDelegado implements Runnable {
 
+    // Variables globales de configuracion
     private Socket socket;
     private PrivateKey privateKey;
     private PublicKey publicKey;
@@ -27,49 +28,59 @@ public class ServidorDelegado implements Runnable {
             DataInputStream in = new DataInputStream(socket.getInputStream());
             DataOutputStream out = new DataOutputStream(socket.getOutputStream());
 
+            // paso 1
             System.out.println("1) Comenzando negociación Diffie-Hellman...");
 
+            // Generando parametros DH
+            // Generando P 
             int pLen = in.readInt();
             byte[] pBytes = new byte[pLen];
             in.readFully(pBytes);
             BigInteger p = new BigInteger(pBytes);
 
+            // Generando G
             int gLen = in.readInt();
             byte[] gBytes = new byte[gLen];
             in.readFully(gBytes);
             BigInteger g = new BigInteger(gBytes);
 
+            // Generando llave privada del servidor con G y P
             KeyPair serverDH = DHhelper.generarLlaveKeyPair(p, g);
 
+            // paso 2
             System.out.println("2) Enviando llave pública del servidor...");
             byte[] myPubKeyEncoded = serverDH.getPublic().getEncoded();
             out.writeInt(myPubKeyEncoded.length);
             out.write(myPubKeyEncoded);
 
+            // paso 3
             System.out.println("3) Recibiendo llave pública del cliente...");
-            int clientPubLen = in.readInt();
-            byte[] clientPubKeyEncoded = new byte[clientPubLen];
+            int clientPublicLen = in.readInt();
+            byte[] clientPubKeyEncoded = new byte[clientPublicLen];
             in.readFully(clientPubKeyEncoded);
 
+            // Generando llave pública del cliente
             KeyFactory keyFactory = KeyFactory.getInstance("DH");
-            PublicKey clientPubKey = keyFactory.generatePublic(new X509EncodedKeySpec(clientPubKeyEncoded));
+            PublicKey clientPublicKey = keyFactory.generatePublic(new X509EncodedKeySpec(clientPubKeyEncoded));
 
+            // paso 4
             System.out.println("4) Calculando llave secreta de sesión...");
-            byte[] sharedSecret = DHhelper.generarSecretoCompartido(serverDH.getPrivate(), clientPubKey);
-
+            byte[] llaveSecreta = DHhelper.generarSecretoCompartido(serverDH.getPrivate(), clientPublicKey);
             MessageDigest sha512 = MessageDigest.getInstance("SHA-512");
-            byte[] digest = sha512.digest(sharedSecret);
+            byte[] digest = sha512.digest(llaveSecreta);
 
+            // Generando claves simétricas AES y HMAC
             SecretKey aesKey = new SecretKeySpec(Arrays.copyOfRange(digest, 0, 32), "AES");
             SecretKey hmacKey = new SecretKeySpec(Arrays.copyOfRange(digest, 32, 64), "HmacSHA256");
 
+            // paso 5
             System.out.println("5) Firmando, cifrando y enviando tabla de servicios...");
 
-            ByteArrayOutputStream bos = new ByteArrayOutputStream();
-            ObjectOutputStream oos = new ObjectOutputStream(bos);
-            oos.writeObject(servicios);
-            oos.flush();
-            byte[] tablaBytes = bos.toByteArray();
+            ByteArrayOutputStream byteOutput = new ByteArrayOutputStream();
+            ObjectOutputStream objectOutput = new ObjectOutputStream(byteOutput);
+            objectOutput.writeObject(servicios);
+            objectOutput.flush();
+            byte[] tablaBytes = byteOutput.toByteArray();
 
             byte[] firma = CriptUtilities.firmarDatos(tablaBytes, privateKey);
 
@@ -90,6 +101,7 @@ public class ServidorDelegado implements Runnable {
             out.writeInt(hmac.length);
             out.write(hmac);
 
+            // paso 6
             System.out.println("6) Esperando selección del cliente...");
 
             int hmacRecibidoLen = in.readInt();
@@ -100,27 +112,24 @@ public class ServidorDelegado implements Runnable {
             byte[] seleccionCifrada = new byte[seleccionCifradaLen];
             in.readFully(seleccionCifrada);
 
-            
+            // CAlculo Tiempo HMAC
             long startHmac = System.nanoTime();
             byte[] recalculatedHmac = CriptUtilities.calcularHMAC(seleccionCifrada, hmacKey);
             long endHmac = System.nanoTime();
             long tiempoHmacServidor = endHmac - startHmac;
             System.out.println("Tiempo de cálculo de HMAC en servidor (consulta): " + tiempoHmacServidor + " nanosegundos");
             if (!Arrays.equals(hmacRecibido, recalculatedHmac)) {
-                
                 System.out.println("[ERROR] HMAC inválido en selección");
                 socket.close();
                 return;
             }
-
             byte[] seleccionBytes = CriptUtilities.decryptAES(seleccionCifrada, aesKey, iv);
             ObjectInputStream ois = new ObjectInputStream(new ByteArrayInputStream(seleccionBytes));
             Integer idSeleccionado = (Integer) ois.readObject();
-
             String[] datosServicio = servicios.getOrDefault(idSeleccionado, new String[]{"-1", "-1"});
 
+            // paso 7
             System.out.println("7) Enviando IP y puerto del servicio seleccionado...");
-
             ByteArrayOutputStream respuestaBos = new ByteArrayOutputStream();
             ObjectOutputStream respuestaOos = new ObjectOutputStream(respuestaBos);
             respuestaOos.writeObject(datosServicio);
@@ -150,8 +159,6 @@ public class ServidorDelegado implements Runnable {
 
             out.writeInt(respuestaCifrada.length);
             out.write(respuestaCifrada);
-            
-            
 
             out.writeInt(respuestaHmac.length);
             out.write(respuestaHmac);

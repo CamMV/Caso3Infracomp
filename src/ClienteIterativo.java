@@ -17,13 +17,11 @@ public class ClienteIterativo {
 
     public static void main(String[] args) throws Exception {
         System.out.println("Cliente Iterativo iniciando...");
-
         cargarLlaveServidor();
-
         List<Integer> keys = new ArrayList<>();
         Map<Integer, String[]> servicios = null;
 
-        // ====== PRIMERA CONEXIÓN: solo para recibir la tabla ======
+        // ====== Recibe la tabla ======
         Socket socketTabla = new Socket(IP_SERVIDOR, PUERTO_SERVIDOR);
         DataInputStream inTabla = new DataInputStream(socketTabla.getInputStream());
         DataOutputStream outTabla = new DataOutputStream(socketTabla.getOutputStream());
@@ -41,8 +39,8 @@ public class ClienteIterativo {
         outTabla.writeInt(gBytes.length);
         outTabla.write(gBytes);
 
-        int serverPubLen = inTabla.readInt();
-        byte[] serverPubKeyEncoded = new byte[serverPubLen];
+        int serverPublicLen = inTabla.readInt();
+        byte[] serverPubKeyEncoded = new byte[serverPublicLen];
         inTabla.readFully(serverPubKeyEncoded);
 
         KeyFactory keyFactory = KeyFactory.getInstance("DH");
@@ -101,7 +99,8 @@ public class ClienteIterativo {
 
         Random random = new Random();
 
-        // ====== 32 consultas: una conexión por consulta ======
+        //TODO: Realizar las pruebas relacionadas a tiempos por cantidad de consultas
+        // ====== N consultas: una conexión por consulta ====== 
         for (int i = 1; i <= 32; i++) {
             int servicioElegido = keys.get(random.nextInt(keys.size()));
             System.out.println("\nConsulta #" + i + ": solicitando servicio ID " + servicioElegido);
@@ -123,8 +122,8 @@ public class ClienteIterativo {
             out.writeInt(gBytes.length);
             out.write(gBytes);
 
-            serverPubLen = in.readInt();
-            serverPubKeyEncoded = new byte[serverPubLen];
+            serverPublicLen = in.readInt();
+            serverPubKeyEncoded = new byte[serverPublicLen];
             in.readFully(serverPubKeyEncoded);
             serverPubKey = keyFactory.generatePublic(new X509EncodedKeySpec(serverPubKeyEncoded));
 
