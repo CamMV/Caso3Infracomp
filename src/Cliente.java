@@ -28,9 +28,9 @@ public class Cliente {
 
         System.out.println("1) Comenzando negociación Diffie-Hellman...");
 
-        KeyPair clientDH = DHhelper.generateDHKeyPair();
-        BigInteger p = DHhelper.getPrime(clientDH);
-        BigInteger g = DHhelper.getGenerator(clientDH);
+        KeyPair clientDH = DHhelper.generarLlaveDH();
+        BigInteger p = DHhelper.getP(clientDH);
+        BigInteger g = DHhelper.getG(clientDH);
 
         byte[] pBytes = p.toByteArray();
         out.writeInt(pBytes.length);
@@ -54,7 +54,7 @@ public class Cliente {
         out.write(myPubKeyEncoded);
 
         System.out.println("4) Calculando llave secreta de sesión...");
-        byte[] sharedSecret = DHhelper.generateSharedSecret(clientDH.getPrivate(), serverPubKey);
+        byte[] sharedSecret = DHhelper.generarSecretoCompartido(clientDH.getPrivate(), serverPubKey);
 
         MessageDigest sha512 = MessageDigest.getInstance("SHA-512");
         byte[] digest = sha512.digest(sharedSecret);
@@ -81,7 +81,7 @@ public class Cliente {
         byte[] hmac = new byte[hmacLen];
         in.readFully(hmac);
 
-        byte[] recalculatedHmac = CriptUtilities.calculateHMAC(tablaCifrada, hmacKey);
+        byte[] recalculatedHmac = CriptUtilities.calcularHMAC(tablaCifrada, hmacKey);
 
         if (!Arrays.equals(hmac, recalculatedHmac)) {
             System.out.println("[ERROR] HMAC inválido en tabla recibida.");
@@ -91,7 +91,7 @@ public class Cliente {
 
         byte[] tablaBytes = CriptUtilities.decryptAES(tablaCifrada, aesKey, iv);
 
-        if (!CriptUtilities.verifySignature(tablaBytes, firma, serverPublicKey)) {
+        if (!CriptUtilities.verificarFirma(tablaBytes, firma, serverPublicKey)) {
             System.out.println("[ERROR] Firma inválida en tabla recibida.");
             socket.close();
             return;
@@ -128,7 +128,7 @@ public class Cliente {
         byte[] seleccionBytes = bos.toByteArray();
 
         byte[] seleccionCifrada = CriptUtilities.encryptAES(seleccionBytes, aesKey, iv);
-        byte[] seleccionHmac = CriptUtilities.calculateHMAC(seleccionCifrada, hmacKey);
+        byte[] seleccionHmac = CriptUtilities.calcularHMAC(seleccionCifrada, hmacKey);
 
         out.writeInt(seleccionHmac.length);
         out.write(seleccionHmac);
@@ -146,7 +146,7 @@ public class Cliente {
         byte[] respuestaCifrada = new byte[respuestaCifradaLen];
         in.readFully(respuestaCifrada);
 
-        byte[] recalculatedHmacRespuesta = CriptUtilities.calculateHMAC(respuestaCifrada, hmacKey);
+        byte[] recalculatedHmacRespuesta = CriptUtilities.calcularHMAC(respuestaCifrada, hmacKey);
 
         if (!Arrays.equals(hmacRespuesta, recalculatedHmacRespuesta)) {
             System.out.println("[ERROR] HMAC inválido en respuesta.");

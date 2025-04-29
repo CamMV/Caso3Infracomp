@@ -19,7 +19,7 @@ public class CriptUtilities {
     }
 
     // Firmar datos con RSA
-    public static byte[] signData(byte[] data, PrivateKey privateKey) throws Exception {
+    public static byte[] firmarDatos(byte[] data, PrivateKey privateKey) throws Exception {
         Signature signer = Signature.getInstance("SHA256withRSA");
         signer.initSign(privateKey);
         signer.update(data);
@@ -27,7 +27,7 @@ public class CriptUtilities {
     }
 
     // Verificar firma RSA
-    public static boolean verifySignature(byte[] data, byte[] signature, PublicKey publicKey) throws Exception {
+    public static boolean verificarFirma(byte[] data, byte[] signature, PublicKey publicKey) throws Exception {
         Signature verifier = Signature.getInstance("SHA256withRSA");
         verifier.initVerify(publicKey);
         verifier.update(data);
@@ -49,7 +49,7 @@ public class CriptUtilities {
     }
 
     // Calcular HMAC
-    public static byte[] calculateHMAC(byte[] data, SecretKey hmacKey) throws Exception {
+    public static byte[] calcularHMAC(byte[] data, SecretKey hmacKey) throws Exception {
         Mac mac = Mac.getInstance("HmacSHA256");
         mac.init(hmacKey);
         return mac.doFinal(data);

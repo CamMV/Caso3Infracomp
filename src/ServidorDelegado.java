@@ -39,7 +39,7 @@ public class ServidorDelegado implements Runnable {
             in.readFully(gBytes);
             BigInteger g = new BigInteger(gBytes);
 
-            KeyPair serverDH = DHhelper.generateKeyPair(p, g);
+            KeyPair serverDH = DHhelper.generarLlaveKeyPair(p, g);
 
             System.out.println("2) Enviando llave pública del servidor...");
             byte[] myPubKeyEncoded = serverDH.getPublic().getEncoded();
@@ -55,7 +55,7 @@ public class ServidorDelegado implements Runnable {
             PublicKey clientPubKey = keyFactory.generatePublic(new X509EncodedKeySpec(clientPubKeyEncoded));
 
             System.out.println("4) Calculando llave secreta de sesión...");
-            byte[] sharedSecret = DHhelper.generateSharedSecret(serverDH.getPrivate(), clientPubKey);
+            byte[] sharedSecret = DHhelper.generarSecretoCompartido(serverDH.getPrivate(), clientPubKey);
 
             MessageDigest sha512 = MessageDigest.getInstance("SHA-512");
             byte[] digest = sha512.digest(sharedSecret);
@@ -71,12 +71,12 @@ public class ServidorDelegado implements Runnable {
             oos.flush();
             byte[] tablaBytes = bos.toByteArray();
 
-            byte[] firma = CriptUtilities.signData(tablaBytes, privateKey);
+            byte[] firma = CriptUtilities.firmarDatos(tablaBytes, privateKey);
 
             IvParameterSpec iv = CriptUtilities.generateIV();
             byte[] tablaCifrada = CriptUtilities.encryptAES(tablaBytes, aesKey, iv);
 
-            byte[] hmac = CriptUtilities.calculateHMAC(tablaCifrada, hmacKey);
+            byte[] hmac = CriptUtilities.calcularHMAC(tablaCifrada, hmacKey);
 
             out.writeInt(iv.getIV().length);
             out.write(iv.getIV());
@@ -102,7 +102,7 @@ public class ServidorDelegado implements Runnable {
 
             
             long startHmac = System.nanoTime();
-            byte[] recalculatedHmac = CriptUtilities.calculateHMAC(seleccionCifrada, hmacKey);
+            byte[] recalculatedHmac = CriptUtilities.calcularHMAC(seleccionCifrada, hmacKey);
             long endHmac = System.nanoTime();
             long tiempoHmacServidor = endHmac - startHmac;
             System.out.println("Tiempo de cálculo de HMAC en servidor (consulta): " + tiempoHmacServidor + " nanosegundos");
@@ -143,7 +143,7 @@ public class ServidorDelegado implements Runnable {
             System.out.println("Tiempo cifrado asimétrico (RSA): " + tiempoAsimetrico + " nanosegundos");
 
             // Solo enviamos respuesta cifrada con AES
-            byte[] respuestaHmac = CriptUtilities.calculateHMAC(respuestaCifrada, hmacKey);
+            byte[] respuestaHmac = CriptUtilities.calcularHMAC(respuestaCifrada, hmacKey);
 
             out.writeInt(respuestaHmac.length);
             out.write(respuestaHmac);

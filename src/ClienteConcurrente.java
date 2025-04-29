@@ -66,9 +66,9 @@ public class ClienteConcurrente {
         DataOutputStream out = new DataOutputStream(socket.getOutputStream());
 
         // Diffie-Hellman
-        KeyPair clientDH = DHhelper.generateDHKeyPair();
-        BigInteger p = DHhelper.getPrime(clientDH);
-        BigInteger g = DHhelper.getGenerator(clientDH);
+        KeyPair clientDH = DHhelper.generarLlaveDH();
+        BigInteger p = DHhelper.getP(clientDH);
+        BigInteger g = DHhelper.getG(clientDH);
 
         byte[] pBytes = p.toByteArray();
         out.writeInt(pBytes.length);
@@ -89,7 +89,7 @@ public class ClienteConcurrente {
         out.writeInt(myPubKeyEncoded.length);
         out.write(myPubKeyEncoded);
 
-        byte[] sharedSecret = DHhelper.generateSharedSecret(clientDH.getPrivate(), serverPubKey);
+        byte[] sharedSecret = DHhelper.generarSecretoCompartido(clientDH.getPrivate(), serverPubKey);
 
         MessageDigest sha512 = MessageDigest.getInstance("SHA-512");
         byte[] digest = sha512.digest(sharedSecret);
@@ -116,7 +116,7 @@ public class ClienteConcurrente {
         in.readFully(hmac);
 
         long startHmac = System.nanoTime();
-        byte[] recalculatedHmac = CriptUtilities.calculateHMAC(tablaCifrada, hmacKey);
+        byte[] recalculatedHmac = CriptUtilities.calcularHMAC(tablaCifrada, hmacKey);
         long endHmac = System.nanoTime();
         long tiempoHmacCliente = endHmac - startHmac;
         System.out.println("[Cliente concurrente] Tiempo de cálculo de HMAC de la tabla: " + tiempoHmacCliente + " nanosegundos");
@@ -132,7 +132,7 @@ public class ClienteConcurrente {
 
         byte[] tablaBytes = CriptUtilities.decryptAES(tablaCifrada, aesKey, iv);
 
-        if (!CriptUtilities.verifySignature(tablaBytes, firma, serverPublicKey)) {
+        if (!CriptUtilities.verificarFirma(tablaBytes, firma, serverPublicKey)) {
             System.out.println("[ERROR] Cliente concurrente: Firma de tabla inválida.");
             socket.close();
             return;
