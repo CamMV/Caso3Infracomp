@@ -153,7 +153,7 @@ public class ClienteConcurrente {
     }
 
     private static void cargarLlaveServidor() throws Exception {
-        byte[] publicBytes = Files.readAllBytes(Paths.get("public_key.der"));
+        byte[] publicBytes = Files.readAllBytes(Paths.get("public_key.key"));
         X509EncodedKeySpec publicSpec = new X509EncodedKeySpec(publicBytes);
         KeyFactory kf = KeyFactory.getInstance("RSA");
         serverPublicKey = kf.generatePublic(publicSpec);
