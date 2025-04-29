@@ -39,7 +39,7 @@ public class ServidorDelegado implements Runnable {
             in.readFully(gBytes);
             BigInteger g = new BigInteger(gBytes);
 
-            KeyPair serverDH = DiffieHellmanHelper.generateKeyPair(p, g);
+            KeyPair serverDH = DHhelper.generateKeyPair(p, g);
 
             System.out.println("2) Enviando llave pública del servidor...");
             byte[] myPubKeyEncoded = serverDH.getPublic().getEncoded();
@@ -55,7 +55,7 @@ public class ServidorDelegado implements Runnable {
             PublicKey clientPubKey = keyFactory.generatePublic(new X509EncodedKeySpec(clientPubKeyEncoded));
 
             System.out.println("4) Calculando llave secreta de sesión...");
-            byte[] sharedSecret = DiffieHellmanHelper.generateSharedSecret(serverDH.getPrivate(), clientPubKey);
+            byte[] sharedSecret = DHhelper.generateSharedSecret(serverDH.getPrivate(), clientPubKey);
 
             MessageDigest sha512 = MessageDigest.getInstance("SHA-512");
             byte[] digest = sha512.digest(sharedSecret);
@@ -71,12 +71,12 @@ public class ServidorDelegado implements Runnable {
             oos.flush();
             byte[] tablaBytes = bos.toByteArray();
 
-            byte[] firma = CryptoUtils.signData(tablaBytes, privateKey);
+            byte[] firma = CriptUtilities.signData(tablaBytes, privateKey);
 
-            IvParameterSpec iv = CryptoUtils.generateIV();
-            byte[] tablaCifrada = CryptoUtils.encryptAES(tablaBytes, aesKey, iv);
+            IvParameterSpec iv = CriptUtilities.generateIV();
+            byte[] tablaCifrada = CriptUtilities.encryptAES(tablaBytes, aesKey, iv);
 
-            byte[] hmac = CryptoUtils.calculateHMAC(tablaCifrada, hmacKey);
+            byte[] hmac = CriptUtilities.calculateHMAC(tablaCifrada, hmacKey);
 
             out.writeInt(iv.getIV().length);
             out.write(iv.getIV());
@@ -102,7 +102,7 @@ public class ServidorDelegado implements Runnable {
 
             
             long startHmac = System.nanoTime();
-            byte[] recalculatedHmac = CryptoUtils.calculateHMAC(seleccionCifrada, hmacKey);
+            byte[] recalculatedHmac = CriptUtilities.calculateHMAC(seleccionCifrada, hmacKey);
             long endHmac = System.nanoTime();
             long tiempoHmacServidor = endHmac - startHmac;
             System.out.println("Tiempo de cálculo de HMAC en servidor (consulta): " + tiempoHmacServidor + " nanosegundos");
@@ -113,7 +113,7 @@ public class ServidorDelegado implements Runnable {
                 return;
             }
 
-            byte[] seleccionBytes = CryptoUtils.decryptAES(seleccionCifrada, aesKey, iv);
+            byte[] seleccionBytes = CriptUtilities.decryptAES(seleccionCifrada, aesKey, iv);
             ObjectInputStream ois = new ObjectInputStream(new ByteArrayInputStream(seleccionBytes));
             Integer idSeleccionado = (Integer) ois.readObject();
 
@@ -128,13 +128,13 @@ public class ServidorDelegado implements Runnable {
             byte[] respuestaBytes = respuestaBos.toByteArray();
             // Cifrado simétrico
             long startSimetrico = System.nanoTime();
-            byte[] respuestaCifrada = CryptoUtils.encryptAES(respuestaBytes, aesKey, iv);
+            byte[] respuestaCifrada = CriptUtilities.encryptAES(respuestaBytes, aesKey, iv);
             long endSimetrico = System.nanoTime();
             long tiempoSimetrico = endSimetrico - startSimetrico;
 
             // Cifrado asimétrico (solo para medir)
             long startAsimetrico = System.nanoTime();
-            byte[] respuestaCifradaRSA = CryptoUtils.encryptRSA(respuestaBytes, publicKey);
+            byte[] respuestaCifradaRSA = CriptUtilities.encryptRSA(respuestaBytes, publicKey);
             long endAsimetrico = System.nanoTime();
             long tiempoAsimetrico = endAsimetrico - startAsimetrico;
 
@@ -143,7 +143,7 @@ public class ServidorDelegado implements Runnable {
             System.out.println("Tiempo cifrado asimétrico (RSA): " + tiempoAsimetrico + " nanosegundos");
 
             // Solo enviamos respuesta cifrada con AES
-            byte[] respuestaHmac = CryptoUtils.calculateHMAC(respuestaCifrada, hmacKey);
+            byte[] respuestaHmac = CriptUtilities.calculateHMAC(respuestaCifrada, hmacKey);
 
             out.writeInt(respuestaHmac.length);
             out.write(respuestaHmac);

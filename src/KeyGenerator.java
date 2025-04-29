@@ -11,11 +11,11 @@ public class KeyGenerator {
 
         // Guardar llave privada en archivo
         PrivateKey privateKey = keyPair.getPrivate();
-        Files.write(Paths.get("private_key.der"), privateKey.getEncoded());
+        Files.write(Paths.get("private_key.key"), privateKey.getEncoded());
 
         // Guardar llave pública en archivo
         PublicKey publicKey = keyPair.getPublic();
-        Files.write(Paths.get("public_key.der"), publicKey.getEncoded());
+        Files.write(Paths.get("public_key.key"), publicKey.getEncoded());
 
         System.out.println("¡Llaves generadas exitosamente!");
     }

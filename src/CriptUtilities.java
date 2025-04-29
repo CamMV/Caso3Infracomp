@@ -2,7 +2,7 @@ import java.security.*;
 import javax.crypto.*;
 import javax.crypto.spec.*;
 
-public class CryptoUtils {
+public class CriptUtilities {
 
     // Cifrar con AES
     public static byte[] encryptAES(byte[] plaintext, SecretKey aesKey, IvParameterSpec iv) throws Exception {

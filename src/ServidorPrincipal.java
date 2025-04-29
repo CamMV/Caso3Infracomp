@@ -37,13 +37,13 @@ public class ServidorPrincipal {
 
     private static void cargarLlaves() throws Exception {
         System.out.println("0.a) Cargando llave privada del servidor...");
-        byte[] privateBytes = Files.readAllBytes(Paths.get("private_key.der"));
+        byte[] privateBytes = Files.readAllBytes(Paths.get("private_key.key"));
         PKCS8EncodedKeySpec privateSpec = new PKCS8EncodedKeySpec(privateBytes);
         KeyFactory kf = KeyFactory.getInstance("RSA");
         privateKey = kf.generatePrivate(privateSpec);
 
         System.out.println("0.b) Cargando llave pública del servidor...");
-        byte[] publicBytes = Files.readAllBytes(Paths.get("public_key.der"));
+        byte[] publicBytes = Files.readAllBytes(Paths.get("public_key.key"));
         X509EncodedKeySpec publicSpec = new X509EncodedKeySpec(publicBytes);
         publicKey = kf.generatePublic(publicSpec);
     }

@@ -4,7 +4,7 @@ import javax.crypto.KeyAgreement;
 import javax.crypto.interfaces.DHPublicKey;
 import javax.crypto.spec.DHParameterSpec;
 
-public class DiffieHellmanHelper {
+public class DHhelper {
 
     public static final int PRIME_SIZE = 1024; // bits
 

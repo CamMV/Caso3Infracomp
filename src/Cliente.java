@@ -28,9 +28,9 @@ public class Cliente {
 
         System.out.println("1) Comenzando negociación Diffie-Hellman...");
 
-        KeyPair clientDH = DiffieHellmanHelper.generateDHKeyPair();
-        BigInteger p = DiffieHellmanHelper.getPrime(clientDH);
-        BigInteger g = DiffieHellmanHelper.getGenerator(clientDH);
+        KeyPair clientDH = DHhelper.generateDHKeyPair();
+        BigInteger p = DHhelper.getPrime(clientDH);
+        BigInteger g = DHhelper.getGenerator(clientDH);
 
         byte[] pBytes = p.toByteArray();
         out.writeInt(pBytes.length);
@@ -54,7 +54,7 @@ public class Cliente {
         out.write(myPubKeyEncoded);
 
         System.out.println("4) Calculando llave secreta de sesión...");
-        byte[] sharedSecret = DiffieHellmanHelper.generateSharedSecret(clientDH.getPrivate(), serverPubKey);
+        byte[] sharedSecret = DHhelper.generateSharedSecret(clientDH.getPrivate(), serverPubKey);
 
         MessageDigest sha512 = MessageDigest.getInstance("SHA-512");
         byte[] digest = sha512.digest(sharedSecret);
@@ -81,7 +81,7 @@ public class Cliente {
         byte[] hmac = new byte[hmacLen];
         in.readFully(hmac);
 
-        byte[] recalculatedHmac = CryptoUtils.calculateHMAC(tablaCifrada, hmacKey);
+        byte[] recalculatedHmac = CriptUtilities.calculateHMAC(tablaCifrada, hmacKey);
 
         if (!Arrays.equals(hmac, recalculatedHmac)) {
             System.out.println("[ERROR] HMAC inválido en tabla recibida.");
@@ -89,9 +89,9 @@ public class Cliente {
             return;
         }
 
-        byte[] tablaBytes = CryptoUtils.decryptAES(tablaCifrada, aesKey, iv);
+        byte[] tablaBytes = CriptUtilities.decryptAES(tablaCifrada, aesKey, iv);
 
-        if (!CryptoUtils.verifySignature(tablaBytes, firma, serverPublicKey)) {
+        if (!CriptUtilities.verifySignature(tablaBytes, firma, serverPublicKey)) {
             System.out.println("[ERROR] Firma inválida en tabla recibida.");
             socket.close();
             return;
@@ -127,8 +127,8 @@ public class Cliente {
         oos.flush();
         byte[] seleccionBytes = bos.toByteArray();
 
-        byte[] seleccionCifrada = CryptoUtils.encryptAES(seleccionBytes, aesKey, iv);
-        byte[] seleccionHmac = CryptoUtils.calculateHMAC(seleccionCifrada, hmacKey);
+        byte[] seleccionCifrada = CriptUtilities.encryptAES(seleccionBytes, aesKey, iv);
+        byte[] seleccionHmac = CriptUtilities.calculateHMAC(seleccionCifrada, hmacKey);
 
         out.writeInt(seleccionHmac.length);
         out.write(seleccionHmac);
@@ -146,7 +146,7 @@ public class Cliente {
         byte[] respuestaCifrada = new byte[respuestaCifradaLen];
         in.readFully(respuestaCifrada);
 
-        byte[] recalculatedHmacRespuesta = CryptoUtils.calculateHMAC(respuestaCifrada, hmacKey);
+        byte[] recalculatedHmacRespuesta = CriptUtilities.calculateHMAC(respuestaCifrada, hmacKey);
 
         if (!Arrays.equals(hmacRespuesta, recalculatedHmacRespuesta)) {
             System.out.println("[ERROR] HMAC inválido en respuesta.");
@@ -154,7 +154,7 @@ public class Cliente {
             return;
         }
 
-        byte[] respuestaBytes = CryptoUtils.decryptAES(respuestaCifrada, aesKey, iv);
+        byte[] respuestaBytes = CriptUtilities.decryptAES(respuestaCifrada, aesKey, iv);
 
         ObjectInputStream respuestaOis = new ObjectInputStream(new ByteArrayInputStream(respuestaBytes));
         String[] datosServicio = (String[]) respuestaOis.readObject();
@@ -169,7 +169,7 @@ public class Cliente {
     }
 
     private static void cargarLlaveServidor() throws Exception {
-        byte[] publicBytes = Files.readAllBytes(Paths.get("public_key.der"));
+        byte[] publicBytes = Files.readAllBytes(Paths.get("public_key.key"));
         X509EncodedKeySpec publicSpec = new X509EncodedKeySpec(publicBytes);
         KeyFactory kf = KeyFactory.getInstance("RSA");
         serverPublicKey = kf.generatePublic(publicSpec);

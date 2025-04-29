@@ -29,9 +29,9 @@ public class ClienteIterativo {
         DataOutputStream outTabla = new DataOutputStream(socketTabla.getOutputStream());
 
         // Diffie-Hellman
-        KeyPair clientDH = DiffieHellmanHelper.generateDHKeyPair();
-        BigInteger p = DiffieHellmanHelper.getPrime(clientDH);
-        BigInteger g = DiffieHellmanHelper.getGenerator(clientDH);
+        KeyPair clientDH = DHhelper.generateDHKeyPair();
+        BigInteger p = DHhelper.getPrime(clientDH);
+        BigInteger g = DHhelper.getGenerator(clientDH);
 
         byte[] pBytes = p.toByteArray();
         outTabla.writeInt(pBytes.length);
@@ -52,7 +52,7 @@ public class ClienteIterativo {
         outTabla.writeInt(myPubKeyEncoded.length);
         outTabla.write(myPubKeyEncoded);
 
-        byte[] sharedSecret = DiffieHellmanHelper.generateSharedSecret(clientDH.getPrivate(), serverPubKey);
+        byte[] sharedSecret = DHhelper.generateSharedSecret(clientDH.getPrivate(), serverPubKey);
 
         MessageDigest sha512 = MessageDigest.getInstance("SHA-512");
         byte[] digest = sha512.digest(sharedSecret);
@@ -78,15 +78,15 @@ public class ClienteIterativo {
         inTabla.readFully(hmac);
 
         // Validar tabla
-        byte[] recalculatedHmac = CryptoUtils.calculateHMAC(tablaCifrada, hmacKey);
+        byte[] recalculatedHmac = CriptUtilities.calculateHMAC(tablaCifrada, hmacKey);
         if (!Arrays.equals(hmac, recalculatedHmac)) {
             System.out.println("[ERROR] HMAC inválido en tabla.");
             socketTabla.close();
             return;
         }
 
-        byte[] tablaBytes = CryptoUtils.decryptAES(tablaCifrada, aesKey, iv);
-        if (!CryptoUtils.verifySignature(tablaBytes, firma, serverPublicKey)) {
+        byte[] tablaBytes = CriptUtilities.decryptAES(tablaCifrada, aesKey, iv);
+        if (!CriptUtilities.verifySignature(tablaBytes, firma, serverPublicKey)) {
             System.out.println("[ERROR] Firma inválida en tabla.");
             socketTabla.close();
             return;
@@ -111,9 +111,9 @@ public class ClienteIterativo {
             DataOutputStream out = new DataOutputStream(socketConsulta.getOutputStream());
 
             // Hacemos Diffie-Hellman otra vez
-            KeyPair clientDHConsulta = DiffieHellmanHelper.generateDHKeyPair();
-            p = DiffieHellmanHelper.getPrime(clientDHConsulta);
-            g = DiffieHellmanHelper.getGenerator(clientDHConsulta);
+            KeyPair clientDHConsulta = DHhelper.generateDHKeyPair();
+            p = DHhelper.getPrime(clientDHConsulta);
+            g = DHhelper.getGenerator(clientDHConsulta);
 
             pBytes = p.toByteArray();
             out.writeInt(pBytes.length);
@@ -132,7 +132,7 @@ public class ClienteIterativo {
             out.writeInt(myPubKeyEncoded.length);
             out.write(myPubKeyEncoded);
 
-            sharedSecret = DiffieHellmanHelper.generateSharedSecret(clientDHConsulta.getPrivate(), serverPubKey);
+            sharedSecret = DHhelper.generateSharedSecret(clientDHConsulta.getPrivate(), serverPubKey);
             digest = sha512.digest(sharedSecret);
 
             aesKey = new SecretKeySpec(Arrays.copyOfRange(digest, 0, 32), "AES");
@@ -155,15 +155,15 @@ public class ClienteIterativo {
             hmac = new byte[hmacLen];
             in.readFully(hmac);
 
-            recalculatedHmac = CryptoUtils.calculateHMAC(tablaCifrada, hmacKey);
+            recalculatedHmac = CriptUtilities.calculateHMAC(tablaCifrada, hmacKey);
             if (!Arrays.equals(hmac, recalculatedHmac)) {
                 System.out.println("[ERROR] HMAC inválido en tabla.");
                 socketConsulta.close();
                 return;
             }
 
-            tablaBytes = CryptoUtils.decryptAES(tablaCifrada, aesKey, iv);
-            if (!CryptoUtils.verifySignature(tablaBytes, firma, serverPublicKey)) {
+            tablaBytes = CriptUtilities.decryptAES(tablaCifrada, aesKey, iv);
+            if (!CriptUtilities.verifySignature(tablaBytes, firma, serverPublicKey)) {
                 System.out.println("[ERROR] Firma inválida en tabla.");
                 socketConsulta.close();
                 return;
@@ -176,8 +176,8 @@ public class ClienteIterativo {
             oos.flush();
             byte[] seleccionBytes = bos.toByteArray();
 
-            byte[] seleccionCifrada = CryptoUtils.encryptAES(seleccionBytes, aesKey, iv);
-            byte[] seleccionHmac = CryptoUtils.calculateHMAC(seleccionCifrada, hmacKey);
+            byte[] seleccionCifrada = CriptUtilities.encryptAES(seleccionBytes, aesKey, iv);
+            byte[] seleccionHmac = CriptUtilities.calculateHMAC(seleccionCifrada, hmacKey);
 
             out.writeInt(seleccionHmac.length);
             out.write(seleccionHmac);
@@ -194,14 +194,14 @@ public class ClienteIterativo {
             byte[] respuestaCifrada = new byte[respuestaCifradaLen];
             in.readFully(respuestaCifrada);
 
-            byte[] recalculatedHmacRespuesta = CryptoUtils.calculateHMAC(respuestaCifrada, hmacKey);
+            byte[] recalculatedHmacRespuesta = CriptUtilities.calculateHMAC(respuestaCifrada, hmacKey);
             if (!Arrays.equals(hmacRespuesta, recalculatedHmacRespuesta)) {
                 System.out.println("[ERROR] HMAC inválido en respuesta.");
                 socketConsulta.close();
                 return;
             }
 
-            byte[] respuestaBytes = CryptoUtils.decryptAES(respuestaCifrada, aesKey, iv);
+            byte[] respuestaBytes = CriptUtilities.decryptAES(respuestaCifrada, aesKey, iv);
 
             ObjectInputStream respuestaOis = new ObjectInputStream(new ByteArrayInputStream(respuestaBytes));
             String[] datosServicio = (String[]) respuestaOis.readObject();
